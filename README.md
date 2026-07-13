@@ -6,7 +6,7 @@ The implementation contract is defined in [`FOD_YOLO26n_Phase1_Technical_Specifi
 
 ## Current status
 
-Parts 1 and 2 establish the repository, packaging, configuration, and portable path foundations. Dataset processing, training, evaluation, model promotion, publication, and inference are not implemented yet.
+The repository now includes packaging, configuration, portable paths, hashing, atomic artifact writes, logging, and environment diagnostics. Dataset processing, training, evaluation, model promotion, publication, and inference are not implemented yet.
 
 No model-accuracy claims are made until a real training and evaluation run produces metrics.
 
@@ -44,3 +44,18 @@ training.device=0
 ```
 
 `fod_yolo.paths.ProjectPaths` resolves repository-relative defaults. `FOD_DATA_ROOT`, `FOD_RUNS_ROOT`, and `FOD_ARTIFACTS_ROOT` can relocate generated files on another machine without changing source code or committed configuration.
+
+## Environment and PyTorch setup
+
+Use the active Python interpreter on each machine. Select the correct PyTorch wheel profile from the official PyTorch installation guidance for that machine's operating system and CUDA environment:
+
+```powershell
+python scripts/install_torch.py --profile <official-profile> --dry-run
+python scripts/install_torch.py --profile <official-profile>
+python -m pip install -r requirements/base.txt
+python scripts/check_environment.py --require-cuda
+```
+
+`install_torch.py` accepts only official `download.pytorch.org` wheel indexes and installs into `sys.executable`, so it does not assume the development machine's Python version. `check_environment.py` writes `reports/environment_report.json` with Python, package, Git, CUDA, cuDNN, GPU, and `nvidia-smi` details. Use `--skip-model-check` only for diagnostics that intentionally do not resolve `yolo26n.pt`.
+
+Project logs use ISO-8601 UTC timestamps and automatically redact `KAGGLE_KEY` and `GH_TOKEN`. Long-running commands can opt into rotating file logs through `fod_yolo.logging_utils.configure_logging`.

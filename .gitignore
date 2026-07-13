@@ -5,6 +5,7 @@ kaggle.json
 # Python
 .venv/
 .tmp/
+.test-tmp/
 __pycache__/
 *.py[cod]
 *.egg-info/
