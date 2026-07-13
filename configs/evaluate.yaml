@@ -2,6 +2,7 @@ evaluation:
   imgsz: 1280
   device: 0
   batch: 8
+  half: false
   workers: 8
   split_for_selection: val
   final_split: test
@@ -24,6 +25,9 @@ threshold_sweep:
 small_object:
   definition: normalized_area_ratio
   max_area_ratio: 0.01
+
+latency:
+  warmup_images: 1
 
 qualitative:
   max_false_positive_examples: 50

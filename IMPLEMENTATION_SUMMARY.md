@@ -80,3 +80,40 @@ CUDA remains mandatory by default. `--allow-cpu` is an explicit escape hatch for
 ```text
 Add reproducible YOLO26n training and resume orchestration
 ```
+
+## Major Part 5: Quantitative evaluation and threshold analysis
+
+### What this part implements
+
+1. `fod_yolo.evaluation.matcher` provides independently tested, confidence-ordered, one-to-one IoU matching with explicit single-class validation.
+2. `fod_yolo.evaluation.threshold_sweep` calculates TP/FP/FN, precision, recall, F1, false-negative rate, false positives per image, images with false negatives, and normalized-area small-object metrics at every configured confidence threshold.
+3. Reference selection deterministically reports best F1, the highest threshold retaining maximum recall, and the lowest-false-positive threshold within one percentage point of maximum recall.
+4. `fod_yolo.evaluation.ultralytics_eval` runs native Ultralytics validation, extracts mAP/precision/recall, performs minimum-confidence predictions, normalizes `Results.boxes.xyxyn`, and captures stage latency plus peak GPU memory when available.
+5. `fod_yolo.evaluation.runner` validates the dataset, binds model and dataset hashes, writes stable JSON/CSV/config/environment artifacts through staging, and preserves all framework output.
+6. `scripts/evaluate.py` supports validation analysis and locked final-test evaluation with the required non-zero failure codes.
+
+### Maintainer model
+
+Ultralytics remains the source of standard mAP values and its native plots. Project code owns threshold-specific safety metrics so the matching rules are explicit and unit tested. Predictions are collected once at the minimum sweep confidence, then filtered and rematched at every threshold without rerunning inference.
+
+Validation and test have different authority. Validation may sweep thresholds and generate analytical references. Test requires `--locked-threshold`, evaluates only that value, and sets `threshold_selection_allowed=false` in `metrics.json`; this prevents test results from leaking into model or operating-threshold selection.
+
+The evaluation directory is installed atomically only after framework evaluation, matching, metric serialization, and provenance capture all succeed. Existing evaluation directories are never silently overwritten.
+
+### Operational boundary
+
+This part implements quantitative evaluation, threshold tables, and runtime metrics. Qualitative annotated examples, static project plots, and the self-contained HTML report remain for the reporting milestone. No real model metrics were generated locally.
+
+### Validation completed
+
+- Python 3.14.3 local interpreter
+- Ruff and strict Mypy checks pass
+- 78 tests and 6 subtests pass
+- Hand-calculated IoU/matching, threshold references, small-object metrics, fake Ultralytics validation, latency, atomic output, and locked-test behavior are covered
+- Evaluation CLI help passes without loading or downloading a model
+
+### Suggested descriptive commit message
+
+```text
+Implement safety-focused model evaluation and threshold analysis
+```

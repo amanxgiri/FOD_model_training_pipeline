@@ -125,3 +125,37 @@ tensorboard --logdir runs/train --port 6006
 ```
 
 For VS Code Remote SSH, forward port `6006` through the Ports panel and open the forwarded local address. `FOD_RUNS_ROOT` and `FOD_ARTIFACTS_ROOT` relocate generated runs and candidate checkpoints without changing committed configuration.
+
+### Training readiness checklist
+
+No further training-pipeline code is required before the first baseline run. On the training device, use its active compatible Python interpreter and complete these operational steps:
+
+```powershell
+python scripts/install_torch.py --profile <device-compatible-profile>
+python -m pip install -r requirements/base.txt
+python scripts/download_dataset.py --config configs/dataset.yaml
+python scripts/prepare_dataset.py --config configs/dataset.yaml
+python scripts/validate_dataset.py --data data/processed/fod_a_single_class_yolo/fod_a.yaml --strict
+python scripts/check_environment.py --require-cuda
+python scripts/train.py --config configs/train_yolo26n_1280.yaml
+```
+
+The real duration before training can start is therefore dataset download/preparation and machine dependency setup, not another implementation milestone.
+
+## Evaluation pipeline
+
+Validation evaluation combines Ultralytics mAP outputs with deterministic project-controlled TP/FP/FN matching, false-negative metrics, small-object recall, confidence sweeps, and per-stage latency:
+
+```powershell
+python scripts/evaluate.py --model runs/train/<run-id>/weights/best.pt --data data/processed/fod_a_single_class_yolo/fod_a.yaml --split val --config configs/evaluate.yaml
+```
+
+Validation writes `reports/<run-id>/metrics.json`, `threshold_sweep.json`, `threshold_sweep.csv`, environment metadata, the resolved evaluation configuration, and all native Ultralytics validation artifacts. The report identifies best-F1, maximum-recall, and balanced-high-recall reference thresholds without automatically selecting a production threshold.
+
+Test evaluation is deliberately locked: it requires a threshold selected from validation and does not search the test split for a better value.
+
+```powershell
+python scripts/evaluate.py --model artifacts/champion/fod_yolo26n_best.pt --data data/processed/fod_a_single_class_yolo/fod_a.yaml --split test --config configs/evaluate.yaml --locked-threshold <validation-selected-threshold>
+```
+
+Prediction matching is confidence ordered, one-to-one, and uses the configured IoU threshold. Reports include model/dataset hashes, split identity, runtime precision/device/batch settings, warm-up count, preprocessing/inference/postprocessing latency, throughput, and peak GPU memory when PyTorch exposes it.
