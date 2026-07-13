@@ -1,0 +1,14 @@
+# PyTorch and torchvision are intentionally installed separately.
+ultralytics==8.4.68
+kaggle
+opencv-python
+Pillow
+PyYAML
+numpy
+pandas
+matplotlib
+Jinja2
+tensorboard
+tqdm
+requests
+psutil
