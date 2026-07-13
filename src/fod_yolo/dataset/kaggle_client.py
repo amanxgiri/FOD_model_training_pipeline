@@ -16,7 +16,7 @@ from pathlib import Path, PurePosixPath
 from uuid import uuid4
 
 from fod_yolo.dataset import DatasetDownloadError, KaggleAuthenticationError
-from fod_yolo.hashing import atomic_write_json, sha256_file
+from fod_yolo.hashing import atomic_replace_path, atomic_write_json, sha256_file
 from fod_yolo.paths import ensure_within_root
 
 
@@ -279,7 +279,7 @@ def _download_archive(
             raise DatasetDownloadError(
                 f"Expected one ZIP archive from Kaggle, found {len(archives)} in {staging}"
             )
-        os.replace(archives[0], archive_path)
+        atomic_replace_path(archives[0], archive_path)
     except OSError as exc:
         raise DatasetDownloadError(f"Unable to run Kaggle download: {exc}") from exc
     finally:
@@ -308,12 +308,12 @@ def _replace_directory(staging: Path, target: Path, *, force: bool) -> None:
     backup: Path | None = None
     if target.exists():
         backup = target.with_name(f".{target.name}.backup-{uuid4().hex}")
-        os.replace(target, backup)
+        atomic_replace_path(target, backup)
     try:
-        os.replace(staging, target)
+        atomic_replace_path(staging, target)
     except OSError:
         if backup is not None and backup.exists() and not target.exists():
-            os.replace(backup, target)
+            atomic_replace_path(backup, target)
         raise
     if backup is not None:
         _remove_directory(backup)

@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import json
-import os
 import shutil
 import tempfile
 from collections.abc import Iterable, Mapping
@@ -21,6 +20,7 @@ from fod_yolo.dataset.statistics import build_dataset_statistics
 from fod_yolo.dataset.validate import ValidationReport, validate_yolo_dataset
 from fod_yolo.environment import inspect_git
 from fod_yolo.hashing import (
+    atomic_replace_path,
     atomic_write_json,
     atomic_write_yaml,
     sha256_file,
@@ -339,12 +339,12 @@ def _replace_directory(staging: Path, target: Path) -> None:
     backup: Path | None = None
     if target.exists():
         backup = target.with_name(f".{target.name}.backup-{uuid4().hex}")
-        os.replace(target, backup)
+        atomic_replace_path(target, backup)
     try:
-        os.replace(staging, target)
+        atomic_replace_path(staging, target)
     except OSError:
         if backup is not None and backup.exists() and not target.exists():
-            os.replace(backup, target)
+            atomic_replace_path(backup, target)
         raise
     if backup is not None:
         shutil.rmtree(backup)

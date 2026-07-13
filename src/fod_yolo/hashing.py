@@ -7,6 +7,7 @@ import hmac
 import json
 import os
 import tempfile
+import time
 from collections.abc import Mapping
 from pathlib import Path
 from typing import Any
@@ -18,6 +19,31 @@ class HashingError(RuntimeError):
 
 class AtomicWriteError(RuntimeError):
     """Raised when an atomic artifact write cannot be completed."""
+
+
+def atomic_replace_path(
+    source: str | Path,
+    destination: str | Path,
+    *,
+    attempts: int = 6,
+    initial_delay_seconds: float = 0.05,
+) -> None:
+    """Atomically replace a path, retrying transient Windows access-denied locks."""
+
+    if attempts <= 0:
+        raise ValueError("attempts must be positive")
+    if initial_delay_seconds < 0:
+        raise ValueError("initial_delay_seconds cannot be negative")
+    source_path = Path(source)
+    destination_path = Path(destination)
+    for attempt in range(attempts):
+        try:
+            os.replace(source_path, destination_path)
+            return
+        except PermissionError:
+            if attempt == attempts - 1:
+                raise
+            time.sleep(initial_delay_seconds * (attempt + 1))
 
 
 def sha256_file(path: str | Path, *, chunk_size: int = 1024 * 1024) -> str:
@@ -86,7 +112,7 @@ def atomic_write_bytes(path: str | Path, content: bytes) -> Path:
             temporary_file.write(content)
             temporary_file.flush()
             os.fsync(temporary_file.fileno())
-        os.replace(temporary_path, destination)
+        atomic_replace_path(temporary_path, destination)
     except OSError as exc:
         if temporary_path is not None:
             try:

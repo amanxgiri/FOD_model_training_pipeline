@@ -68,6 +68,21 @@ def test_configured_data_paths_follow_the_data_root_override() -> None:
     assert paths.resolve_data_path("data/processed/fod_a") == external_data / "processed" / "fod_a"
 
 
+def test_run_and_artifact_paths_follow_their_runtime_roots() -> None:
+    paths = ProjectPaths.from_environment(
+        project_root=PROJECT_ROOT,
+        environment={
+            "FOD_RUNS_ROOT": "external/runs",
+            "FOD_ARTIFACTS_ROOT": "external/artifacts",
+        },
+    )
+
+    assert paths.resolve_runs_path("runs/train") == PROJECT_ROOT / "external" / "runs" / "train"
+    assert paths.resolve_artifacts_path("artifacts/candidates") == (
+        PROJECT_ROOT / "external" / "artifacts" / "candidates"
+    )
+
+
 def test_resolve_path_anchors_relative_values() -> None:
     assert resolve_path("configs/dataset.yaml", relative_to=PROJECT_ROOT) == (
         PROJECT_ROOT / "configs" / "dataset.yaml"

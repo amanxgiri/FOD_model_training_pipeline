@@ -6,7 +6,7 @@ The implementation contract is defined in [`FOD_YOLO26n_Phase1_Technical_Specifi
 
 ## Current status
 
-The repository now includes packaging, configuration, portable paths, hashing, atomic artifact writes, logging, environment diagnostics, and the complete dataset download/preparation/validation pipeline. Training, evaluation, model promotion, publication, and inference are not implemented yet.
+The repository now includes packaging, configuration, portable paths, hashing, atomic artifact writes, logging, environment diagnostics, the complete dataset pipeline, and GPU-gated YOLO26n training/resume orchestration. Evaluation, model promotion, publication, and inference are not implemented yet.
 
 No model-accuracy claims are made until a real training and evaluation run produces metrics.
 
@@ -90,3 +90,38 @@ python -m pytest -q -m smoke
 ```
 
 Implementation notes for maintainers and the suggested commit message are recorded in [`IMPLEMENTATION_SUMMARY.md`](IMPLEMENTATION_SUMMARY.md).
+
+## Training pipeline
+
+Complete the environment and dataset checks above before starting a production run. Training requires CUDA unless CPU use is explicitly acknowledged; `--allow-cpu` is intended for controlled smoke/debug runs, not the Phase 1 baseline.
+
+```powershell
+yolo settings tensorboard=True
+python scripts/train.py --config configs/train_yolo26n_1280.yaml
+```
+
+Configuration overrides remain explicit and are saved with the run:
+
+```powershell
+python scripts/train.py --config configs/train_yolo26n_1280.yaml --set training.batch=4 --set training.epochs=150
+```
+
+Every new run receives an identity such as `yolo26n_fod_phase1_1280_20260714T021500Z_a1b2c3d`. Before model loading, the runner creates the unique directory and writes `resolved_config.yaml` and initializing `run_metadata.json`. It then performs strict dataset validation, verifies the dataset fingerprint, captures the environment and dependency freeze, and requires a successful CUDA smoke test.
+
+On success, `weights/best.pt` and `weights/last.pt` remain in the full Ultralytics run directory and are copied with verified SHA-256 values into `artifacts/candidates/<run-id>/`. On failure, `run_metadata.json` records the phase, error type, message, and final status. CUDA out-of-memory failures retain image-size and batch details and recommend lowering only the batch size.
+
+Resume an interrupted run using its latest checkpoint:
+
+```powershell
+python scripts/train.py --resume runs/train/<run-id>/weights/last.pt
+```
+
+Resume uses the original `resolved_config.yaml`, continues the same run identity, and rejects a changed dataset fingerprint unless `--allow-dataset-change` is explicitly supplied. Successfully completed runs cannot be resumed accidentally.
+
+Monitor enabled TensorBoard logs with:
+
+```powershell
+tensorboard --logdir runs/train --port 6006
+```
+
+For VS Code Remote SSH, forward port `6006` through the Ports panel and open the forwarded local address. `FOD_RUNS_ROOT` and `FOD_ARTIFACTS_ROOT` relocate generated runs and candidate checkpoints without changing committed configuration.

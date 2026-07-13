@@ -115,6 +115,30 @@ class ProjectPaths:
             return self.data_root.joinpath(*parts[1:]).resolve()
         return resolve_path(candidate, relative_to=self.project_root)
 
+    def resolve_runs_path(self, configured_path: str | Path) -> Path:
+        """Resolve a configured run path while honoring FOD_RUNS_ROOT relocation."""
+
+        return self._resolve_relocatable_path(configured_path, "runs", self.runs_root)
+
+    def resolve_artifacts_path(self, configured_path: str | Path) -> Path:
+        """Resolve an artifact path while honoring FOD_ARTIFACTS_ROOT relocation."""
+
+        return self._resolve_relocatable_path(configured_path, "artifacts", self.artifacts_root)
+
+    def _resolve_relocatable_path(
+        self,
+        configured_path: str | Path,
+        configured_root_name: str,
+        runtime_root: Path,
+    ) -> Path:
+        candidate = Path(configured_path).expanduser()
+        if candidate.is_absolute():
+            return candidate.resolve()
+        parts = candidate.parts
+        if parts and parts[0].casefold() == configured_root_name.casefold():
+            return runtime_root.joinpath(*parts[1:]).resolve()
+        return resolve_path(candidate, relative_to=self.project_root)
+
 
 def _environment_path(
     environment: Mapping[str, str],

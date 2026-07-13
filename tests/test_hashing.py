@@ -10,6 +10,7 @@ import yaml
 
 from fod_yolo.hashing import (
     AtomicWriteError,
+    atomic_replace_path,
     atomic_write_json,
     atomic_write_text,
     atomic_write_yaml,
@@ -45,6 +46,25 @@ def test_atomic_text_write_replaces_existing_content(tmp_path: Path) -> None:
     assert result == destination.resolve()
     assert destination.read_text(encoding="utf-8") == "second"
     assert list(destination.parent.glob("*.tmp")) == []
+
+
+def test_atomic_replace_retries_transient_permission_errors(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    attempts = 0
+
+    def transient_replace(source: Path, destination: Path) -> None:
+        nonlocal attempts
+        attempts += 1
+        if attempts < 3:
+            raise PermissionError("temporary Windows file lock")
+
+    monkeypatch.setattr("fod_yolo.hashing.os.replace", transient_replace)
+    monkeypatch.setattr("fod_yolo.hashing.time.sleep", lambda delay: None)
+
+    atomic_replace_path("source", "destination")
+
+    assert attempts == 3
 
 
 def test_atomic_json_is_stable_utf8_and_strict(tmp_path: Path) -> None:
