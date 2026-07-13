@@ -1,0 +1,8 @@
+<annotation>
+  <filename>image005.ppm</filename>
+  <size><width>10</width><height>10</height><depth>3</depth></size>
+  <object>
+    <name>invalid</name><truncated>0</truncated><difficult>0</difficult>
+    <bndbox><xmin>5</xmin><ymin>2</ymin><xmax>5</xmax><ymax>8</ymax></bndbox>
+  </object>
+</annotation>

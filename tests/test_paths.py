@@ -57,6 +57,17 @@ def test_absolute_environment_override_is_an_explicit_external_root() -> None:
     assert paths.data_root == external_data
 
 
+def test_configured_data_paths_follow_the_data_root_override() -> None:
+    external_data = (PROJECT_ROOT.parent / "training-device-data").resolve()
+    paths = ProjectPaths.from_environment(
+        project_root=PROJECT_ROOT,
+        environment={"FOD_DATA_ROOT": str(external_data)},
+    )
+
+    assert paths.resolve_data_path("data/raw/fod_a") == external_data / "raw" / "fod_a"
+    assert paths.resolve_data_path("data/processed/fod_a") == external_data / "processed" / "fod_a"
+
+
 def test_resolve_path_anchors_relative_values() -> None:
     assert resolve_path("configs/dataset.yaml", relative_to=PROJECT_ROOT) == (
         PROJECT_ROOT / "configs" / "dataset.yaml"

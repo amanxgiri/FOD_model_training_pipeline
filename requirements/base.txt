@@ -2,7 +2,7 @@
 ultralytics==8.4.68
 kaggle
 opencv-python
-Pillow
+Pillow>=10.0
 PyYAML>=6.0,<7.0
 numpy
 pandas

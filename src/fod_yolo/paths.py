@@ -104,6 +104,17 @@ class ProjectPaths:
         ):
             directory.mkdir(parents=True, exist_ok=True)
 
+    def resolve_data_path(self, configured_path: str | Path) -> Path:
+        """Resolve a configured data path while honoring FOD_DATA_ROOT relocation."""
+
+        candidate = Path(configured_path).expanduser()
+        if candidate.is_absolute():
+            return candidate.resolve()
+        parts = candidate.parts
+        if parts and parts[0].casefold() == "data":
+            return self.data_root.joinpath(*parts[1:]).resolve()
+        return resolve_path(candidate, relative_to=self.project_root)
+
 
 def _environment_path(
     environment: Mapping[str, str],

@@ -18,4 +18,4 @@ After installing the PyTorch build appropriate for the target system:
 python -m pip install -r requirements/base.txt
 ```
 
-The future `scripts/install_torch.py` command will make the machine-specific installation explicit. A completed training run will save an environment freeze for reproducibility; that freeze describes the original environment and is not intended to force an incompatible CUDA build onto another device.
+The `scripts/install_torch.py` command makes the machine-specific installation explicit. A completed training run will save an environment freeze for reproducibility; that freeze describes the original environment and is not intended to force an incompatible CUDA build onto another device.

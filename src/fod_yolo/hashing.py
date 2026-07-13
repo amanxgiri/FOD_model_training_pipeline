@@ -51,6 +51,22 @@ def verify_sha256(path: str | Path, expected_sha256: str) -> bool:
     return hmac.compare_digest(sha256_file(path), normalized)
 
 
+def sha256_json(value: object) -> str:
+    """Hash one canonical strict-JSON representation for stable fingerprints."""
+
+    try:
+        serialized = json.dumps(
+            value,
+            allow_nan=False,
+            ensure_ascii=False,
+            separators=(",", ":"),
+            sort_keys=True,
+        )
+    except (TypeError, ValueError) as exc:
+        raise HashingError(f"Value cannot be canonicalized as strict JSON: {exc}") from exc
+    return hashlib.sha256(serialized.encode("utf-8")).hexdigest()
+
+
 def atomic_write_bytes(path: str | Path, content: bytes) -> Path:
     """Atomically replace a file with bytes written and flushed in its destination directory."""
 

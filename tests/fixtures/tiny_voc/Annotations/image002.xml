@@ -1,0 +1,8 @@
+<annotation>
+  <filename>image002.ppm</filename>
+  <size><width>10</width><height>10</height><depth>3</depth></size>
+  <object>
+    <name>wire</name><truncated>1</truncated><difficult>0</difficult>
+    <bndbox><xmin>8</xmin><ymin>8</ymin><xmax>12</xmax><ymax>12</ymax></bndbox>
+  </object>
+</annotation>
