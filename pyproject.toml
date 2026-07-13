@@ -8,6 +8,9 @@ version = "0.1.0"
 description = "Reproducible YOLO26n training and evaluation pipeline for single-class FOD detection"
 readme = "README.md"
 requires-python = ">=3.11"
+dependencies = [
+  "PyYAML>=6.0,<7.0",
+]
 license = { file = "LICENSE" }
 authors = [
   { name = "FOD Detection Project" },

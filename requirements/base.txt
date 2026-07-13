@@ -3,7 +3,7 @@ ultralytics==8.4.68
 kaggle
 opencv-python
 Pillow
-PyYAML
+PyYAML>=6.0,<7.0
 numpy
 pandas
 matplotlib

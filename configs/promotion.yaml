@@ -1,0 +1,17 @@
+promotion:
+  source_split: val
+  metric_tolerance: 0.002
+  ranking:
+    - metric: small_object_recall
+      direction: maximize
+    - metric: recall
+      direction: maximize
+    - metric: map50_95
+      direction: maximize
+    - metric: false_positives_per_image
+      direction: minimize
+    - metric: p95_inference_latency_ms
+      direction: minimize
+  require_complete_metrics: true
+  require_dataset_fingerprint_match: true
+  require_clean_git_commit: false

@@ -1,0 +1,14 @@
+video:
+  model: artifacts/champion/fod_yolo26n_best.pt
+  source: null
+  imgsz: 1280
+  confidence: 0.25
+  device: 0
+  frame_stride: 1
+  max_detections: 300
+  save_annotated_video: true
+  save_detection_csv: true
+  save_summary_json: true
+  save_detection_frames: false
+  stream: true
+  output_root: runs/inference/video

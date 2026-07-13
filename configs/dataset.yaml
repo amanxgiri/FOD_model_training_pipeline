@@ -1,0 +1,24 @@
+dataset:
+  kaggle_slug: kilogrand/foreign-object-debris-in-airports-fod-a-dataset
+  kaggle_version: null
+  raw_root: data/raw/fod_a
+  processed_root: data/processed/fod_a_single_class_yolo
+  archive_name: fod_a.zip
+  force_download: false
+  force_extract: false
+
+conversion:
+  target_class_id: 0
+  target_class_name: FOD
+  image_transfer_mode: copy
+  keep_empty_images: true
+  clip_boxes: true
+  reject_degenerate_boxes: true
+  verify_image_dimensions: true
+
+split:
+  seed: 42
+  validation_fraction_of_trainval: 0.20
+  preserve_official_test: true
+  source_trainval_file: ImageSets/Main/trainval.txt
+  source_test_file: ImageSets/Main/test.txt

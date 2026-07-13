@@ -1,0 +1,35 @@
+model: yolo26n.pt
+data: data/processed/fod_a_single_class_yolo/fod_a.yaml
+
+training:
+  epochs: 100
+  imgsz: 1280
+  batch: -1
+  device: 0
+  workers: 8
+  pretrained: true
+  optimizer: auto
+  patience: 30
+  seed: 42
+  deterministic: true
+  amp: true
+  cache: false
+  rect: false
+  multi_scale: 0.0
+  close_mosaic: 10
+  save: true
+  save_period: 10
+  val: true
+  plots: true
+  project: runs/train
+  name: yolo26n_fod_phase1_1280
+  exist_ok: false
+
+metadata:
+  experiment_description: Phase 1 single-class FOD training on Kaggle FOD-A
+  tags:
+    - phase1
+    - fod-a
+    - single-class
+    - yolo26n
+    - imgsz1280

@@ -6,7 +6,7 @@ The implementation contract is defined in [`FOD_YOLO26n_Phase1_Technical_Specifi
 
 ## Current status
 
-Part 1 establishes the repository and packaging foundation. Dataset processing, training, evaluation, model promotion, publication, and inference are not implemented yet.
+Parts 1 and 2 establish the repository, packaging, configuration, and portable path foundations. Dataset processing, training, evaluation, model promotion, publication, and inference are not implemented yet.
 
 No model-accuracy claims are made until a real training and evaluation run produces metrics.
 
@@ -33,3 +33,14 @@ Development and runtime dependencies will be installed as their corresponding pr
 ## Package layout
 
 Business logic lives under `src/fod_yolo`. The top-level `scripts` directory will contain thin command-line wrappers only. Generated datasets, runs, reports, model artifacts, and secrets are excluded from ordinary Git commits.
+
+## Configuration foundation
+
+The five version-controlled YAML files under `configs/` define dataset preparation, training, evaluation, champion promotion, and video inference defaults. `fod_yolo.config` loads them with safe YAML parsing and supports validated dotted overrides such as:
+
+```text
+training.batch=4
+training.device=0
+```
+
+`fod_yolo.paths.ProjectPaths` resolves repository-relative defaults. `FOD_DATA_ROOT`, `FOD_RUNS_ROOT`, and `FOD_ARTIFACTS_ROOT` can relocate generated files on another machine without changing source code or committed configuration.
