@@ -163,7 +163,8 @@ def prepare_dataset(
     manifest_path = final_root / "dataset_manifest.json"
     statistics_path = final_root / "dataset_statistics.json"
     validation_path = final_root / "validation_report.json"
-    if final_root.exists() and not force:
+    completed_outputs = (dataset_yaml, manifest_path, statistics_path, validation_path)
+    if final_root.exists() and not force and all(path.is_file() for path in completed_outputs):
         report = validate_yolo_dataset(dataset_yaml, strict=True)
         return PreparationResult(
             processed_root=final_root,

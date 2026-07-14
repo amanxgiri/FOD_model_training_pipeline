@@ -12,6 +12,7 @@ SRC_ROOT = PROJECT_ROOT / "src"
 if str(SRC_ROOT) not in sys.path:
     sys.path.insert(0, str(SRC_ROOT))
 
+from fod_yolo.bootstrap import EnvironmentFileError, load_project_environment  # noqa: E402
 from fod_yolo.config import ConfigError  # noqa: E402
 from fod_yolo.dataset.validate import StrictDatasetValidationError  # noqa: E402
 from fod_yolo.environment import EnvironmentValidationError  # noqa: E402
@@ -47,6 +48,11 @@ def main(argv: Sequence[str] | None = None) -> int:
     """Resolve configuration, execute training, and return the required exit code."""
 
     args = build_parser().parse_args(argv)
+    try:
+        load_project_environment(PROJECT_ROOT)
+    except EnvironmentFileError as exc:
+        print(f"Environment configuration is invalid: {exc}", file=sys.stderr)
+        return 2
     logger = configure_logging(level=args.log_level)
     paths = ProjectPaths.from_environment(project_root=PROJECT_ROOT)
     resume_context = None

@@ -37,7 +37,16 @@ class DatasetSplits:
 
 
 def read_split_ids(path: str | Path) -> tuple[str, ...]:
-    """Read, normalize, and duplicate-check one VOC split file."""
+    """Read and normalize one VOC split file, retaining one copy of each ID."""
+
+    identifiers, _ = _read_split_ids_with_duplicates(path)
+    return identifiers
+
+
+def _read_split_ids_with_duplicates(
+    path: str | Path,
+) -> tuple[tuple[str, ...], tuple[str, ...]]:
+    """Read one split and return unique IDs plus every detected duplicate ID."""
 
     source = Path(path).expanduser().resolve()
     try:
@@ -49,9 +58,7 @@ def read_split_ids(path: str | Path) -> tuple[str, ...]:
     duplicates = sorted(
         identifier for identifier, count in Counter(identifiers).items() if count > 1
     )
-    if duplicates:
-        raise DatasetSplitError(f"Duplicate IDs in split file {source}: {', '.join(duplicates)}")
-    return identifiers
+    return tuple(dict.fromkeys(identifiers)), tuple(duplicates)
 
 
 def resolve_dataset_splits(
@@ -72,11 +79,17 @@ def resolve_dataset_splits(
     trainval_path = root / trainval_file
     test_path = root / test_file
     if preserve_official_test and trainval_path.is_file() and test_path.is_file():
-        trainval_ids = read_split_ids(trainval_path)
-        test_ids = read_split_ids(test_path)
+        trainval_ids, trainval_duplicates = _read_split_ids_with_duplicates(trainval_path)
+        test_ids, test_duplicates = _read_split_ids_with_duplicates(test_path)
         _assert_disjoint({"trainval": trainval_ids, "test": test_ids})
         if len(trainval_ids) < 2:
             raise DatasetSplitError("Official trainval split must contain at least two images")
+
+        warnings = []
+        if trainval_duplicates:
+            warnings.append(_duplicate_warning("trainval", trainval_duplicates))
+        if test_duplicates:
+            warnings.append(_duplicate_warning("test", test_duplicates))
 
         shuffled = sorted(trainval_ids)
         random.Random(seed).shuffle(shuffled)
@@ -89,6 +102,7 @@ def resolve_dataset_splits(
             test=tuple(sorted(test_ids)),
             strategy="official_test_trainval_80_20",
             seed=seed,
+            warnings=tuple(warnings),
         )
     else:
         all_ids = sorted(path.stem for path in (root / "Annotations").glob("*.xml"))
@@ -185,3 +199,10 @@ def _assert_disjoint(memberships: dict[str, tuple[str, ...]]) -> None:
 
 def _bounded_count(total: int, fraction: float) -> int:
     return min(total - 1, max(1, round(total * fraction)))
+
+
+def _duplicate_warning(split_name: str, duplicates: tuple[str, ...]) -> str:
+    return (
+        f"Source {split_name} split contained duplicate IDs; retained one occurrence "
+        f"of each: {', '.join(duplicates)}"
+    )

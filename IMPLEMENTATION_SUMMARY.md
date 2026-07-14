@@ -117,3 +117,34 @@ This part implements quantitative evaluation, threshold tables, and runtime metr
 ```text
 Implement safety-focused model evaluation and threshold analysis
 ```
+
+## Operational readiness update: Local environment loading and Ubuntu runbook
+
+### What this update implements
+
+1. `fod_yolo.bootstrap.load_project_environment` reads an optional repository-root `.env` before CLI configuration, logging, path resolution, or Kaggle authentication.
+2. Existing process environment values take precedence, so explicit device or job-scheduler configuration is never silently overwritten.
+3. Parser errors identify the affected line without echoing credential values, and loaded values are never logged or returned.
+4. Dataset download/preparation/validation, training, evaluation, and environment diagnostics share the same bootstrap behavior.
+5. `TRAINING_RUNBOOK.md` documents the Ubuntu 24.04 and Python 3.12.3 workflow, device-specific PyTorch installation, local Kaggle credential creation, dataset stages, CUDA validation, 50-epoch training, monitoring, and resume.
+6. Official source split lists are duplicate-aware: repeated IDs are retained once and recorded in `split_warnings`, while cross-split overlap remains fatal.
+7. A partial processed directory created by an earlier failed validation is recognized as incomplete and rebuilt atomically without manual deletion or `--force`.
+
+### Maintainer model
+
+`.env` is a local convenience layer, not a reproducibility artifact. It remains ignored by Git and must be created independently on each device. The project records non-secret resolved configuration and environment metadata in generated reports, while credentials remain outside committed files and generated logs.
+
+The loader is dependency-free so credentials and portable path overrides are available before optional runtime packages are imported. A missing `.env` is valid; malformed content fails immediately with exit code 2 instead of allowing a command to run with partial or surprising configuration.
+
+### Validation completed
+
+- Ruff formatting and lint: pass
+- Mypy strict source check: pass across 32 source files
+- Pytest: 84 tests and 6 subtests pass
+- Credential parser tests use temporary files and do not access or print the maintainer's real `.env`
+
+### Suggested descriptive commit message
+
+```text
+Harden environment loading and real FOD-A dataset preparation
+```

@@ -28,8 +28,8 @@ def tiny_voc_root() -> Path:
 
 
 @pytest.fixture
-def prepared_tiny_dataset(tmp_path: Path) -> PreparationResult:
-    """Build and strictly validate a complete temporary YOLO fixture dataset."""
+def tiny_dataset_settings(tmp_path: Path) -> DatasetSettings:
+    """Create portable settings backed by a temporary copy of the VOC fixture."""
 
     raw_root = tmp_path / "data" / "raw" / "fod_a"
     extracted_voc = raw_root / "extracted" / "wrapper" / "VOC"
@@ -48,7 +48,7 @@ def prepared_tiny_dataset(tmp_path: Path) -> PreparationResult:
             "schema_version": "1.0",
         },
     )
-    settings = DatasetSettings(
+    return DatasetSettings(
         kaggle_slug="fixture/tiny-voc",
         kaggle_version=None,
         raw_root=raw_root,
@@ -65,4 +65,10 @@ def prepared_tiny_dataset(tmp_path: Path) -> PreparationResult:
             test_file=Path("ImageSets/Main/test.txt"),
         ),
     )
-    return prepare_dataset(settings)
+
+
+@pytest.fixture
+def prepared_tiny_dataset(tiny_dataset_settings: DatasetSettings) -> PreparationResult:
+    """Build and strictly validate a complete temporary YOLO fixture dataset."""
+
+    return prepare_dataset(tiny_dataset_settings)

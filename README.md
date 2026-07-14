@@ -6,7 +6,7 @@ The implementation contract is defined in [`FOD_YOLO26n_Phase1_Technical_Specifi
 
 ## Current status
 
-The repository now includes packaging, configuration, portable paths, hashing, atomic artifact writes, logging, environment diagnostics, the complete dataset pipeline, and GPU-gated YOLO26n training/resume orchestration. Evaluation, model promotion, publication, and inference are not implemented yet.
+The repository now includes packaging, configuration, portable paths, hashing, atomic artifact writes, logging, environment diagnostics, the complete dataset pipeline, GPU-gated YOLO26n training/resume orchestration, and quantitative evaluation. Model promotion, publication, reporting, and inference are not implemented yet.
 
 No model-accuracy claims are made until a real training and evaluation run produces metrics.
 
@@ -62,7 +62,7 @@ Project logs use ISO-8601 UTC timestamps and automatically redact `KAGGLE_KEY` a
 
 ## Dataset pipeline
 
-Install the official Kaggle CLI into the active interpreter and configure either the `KAGGLE_USERNAME`/`KAGGLE_KEY` pair or a local `kaggle.json`. Do not put credentials in the repository.
+Install the official Kaggle CLI into the active interpreter and configure either the `KAGGLE_USERNAME`/`KAGGLE_KEY` pair or a local `kaggle.json`. Do not put credentials in the repository. CLI scripts automatically load an optional repository-root `.env`; existing shell variables take precedence. Because `.env` is Git-ignored, create it separately on every training device.
 
 ```powershell
 python -m pip install kaggle
@@ -71,7 +71,7 @@ python scripts/prepare_dataset.py --config configs/dataset.yaml
 python scripts/validate_dataset.py --data data/processed/fod_a_single_class_yolo/fod_a.yaml --strict
 ```
 
-The downloader hashes the source archive, writes `source_manifest.json`, rejects unsafe ZIP paths, extracts through a staging directory, and reuses a valid cached archive unless `--force` is supplied. Preparation recursively discovers the Pascal VOC root, preserves the official test split, deterministically divides `trainval` with seed 42, and writes final split lists and hashes.
+The downloader hashes the source archive, writes `source_manifest.json`, rejects unsafe ZIP paths, extracts through a staging directory, and reuses a valid cached archive unless `--force` is supplied. Preparation recursively discovers the Pascal VOC root, preserves the official test split, deterministically divides `trainval` with seed 42, and writes final split lists and hashes. Repeated IDs inside a source split list are detected, reduced to one occurrence, and recorded in manifest warnings; overlap between different splits remains a hard error.
 
 Every valid source object is explicitly stored as class `0` (`FOD`) in YOLO labels. Boxes are clipped and validated, rejected objects and image-dimension mismatches are recorded, and images without valid objects retain empty label files. The processed directory includes:
 
@@ -90,6 +90,8 @@ python -m pytest -q -m smoke
 ```
 
 Implementation notes for maintainers and the suggested commit message are recorded in [`IMPLEMENTATION_SUMMARY.md`](IMPLEMENTATION_SUMMARY.md).
+
+For the complete Ubuntu workflow from a fresh Python environment through a 50-epoch run, follow [`TRAINING_RUNBOOK.md`](TRAINING_RUNBOOK.md).
 
 ## Training pipeline
 

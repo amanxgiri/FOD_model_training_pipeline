@@ -7,7 +7,7 @@ import json
 import pytest
 import yaml
 
-from fod_yolo.dataset.pipeline import PreparationResult
+from fod_yolo.dataset.pipeline import DatasetSettings, PreparationResult, prepare_dataset
 
 
 @pytest.mark.smoke
@@ -43,3 +43,19 @@ def test_empty_images_keep_empty_label_files(prepared_tiny_dataset: PreparationR
     ]
 
     assert {label.stem for label in empty_labels} == {"image003", "image005"}
+
+
+def test_incomplete_processed_directory_is_rebuilt_without_force(
+    tiny_dataset_settings: DatasetSettings,
+) -> None:
+    processed_root = tiny_dataset_settings.processed_root
+    processed_root.mkdir(parents=True)
+    (processed_root / "validation_report.json").write_text("{}\n", encoding="utf-8")
+
+    result = prepare_dataset(tiny_dataset_settings)
+
+    assert result.rebuilt is True
+    assert result.validation_report.status == "pass"
+    assert result.manifest_path.is_file()
+    report_text = (processed_root / "validation_report.json").read_text(encoding="utf-8")
+    assert report_text.strip() != "{}"

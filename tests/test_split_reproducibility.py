@@ -2,8 +2,12 @@
 
 from __future__ import annotations
 
+import shutil
 from pathlib import Path
 
+import pytest
+
+from fod_yolo.dataset import DatasetSplitError
 from fod_yolo.dataset.split import resolve_dataset_splits
 
 
@@ -25,3 +29,48 @@ def test_official_test_split_is_preserved_and_reproducible(tiny_voc_root: Path) 
     assert len(first.val) == 1
     assert set(first.train).isdisjoint(first.val)
     assert set(first.train).isdisjoint(first.test)
+
+
+def test_duplicate_source_ids_are_deduplicated_and_recorded(
+    tiny_voc_root: Path,
+    tmp_path: Path,
+) -> None:
+    copied_root = tmp_path / "VOC"
+    shutil.copytree(tiny_voc_root, copied_root)
+    trainval_path = copied_root / "ImageSets" / "Main" / "trainval.txt"
+    with trainval_path.open("a", encoding="utf-8") as split_file:
+        split_file.write("image001\nimage003\nimage001\n")
+
+    splits = resolve_dataset_splits(
+        copied_root,
+        trainval_file=Path("ImageSets/Main/trainval.txt"),
+        test_file=Path("ImageSets/Main/test.txt"),
+        validation_fraction=0.25,
+        seed=42,
+        preserve_official_test=True,
+    )
+
+    assert len(splits.train) + len(splits.val) == 4
+    assert len(set(splits.train + splits.val)) == 4
+    assert splits.warnings == (
+        "Source trainval split contained duplicate IDs; retained one occurrence "
+        "of each: image001, image003",
+    )
+
+
+def test_cross_split_overlap_remains_fatal(tiny_voc_root: Path, tmp_path: Path) -> None:
+    copied_root = tmp_path / "VOC"
+    shutil.copytree(tiny_voc_root, copied_root)
+    trainval_path = copied_root / "ImageSets" / "Main" / "trainval.txt"
+    with trainval_path.open("a", encoding="utf-8") as split_file:
+        split_file.write("image005\n")
+
+    with pytest.raises(DatasetSplitError, match="Split overlap"):
+        resolve_dataset_splits(
+            copied_root,
+            trainval_file=Path("ImageSets/Main/trainval.txt"),
+            test_file=Path("ImageSets/Main/test.txt"),
+            validation_fraction=0.25,
+            seed=42,
+            preserve_official_test=True,
+        )

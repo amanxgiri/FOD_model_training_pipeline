@@ -12,6 +12,7 @@ SRC_ROOT = PROJECT_ROOT / "src"
 if str(SRC_ROOT) not in sys.path:
     sys.path.insert(0, str(SRC_ROOT))
 
+from fod_yolo.bootstrap import EnvironmentFileError, load_project_environment  # noqa: E402
 from fod_yolo.dataset.validate import (  # noqa: E402
     StrictDatasetValidationError,
     validate_yolo_dataset,
@@ -40,6 +41,11 @@ def main(argv: Sequence[str] | None = None) -> int:
     """Validate, persist the complete report, and return the dataset exit code."""
 
     args = build_parser().parse_args(argv)
+    try:
+        load_project_environment(PROJECT_ROOT)
+    except EnvironmentFileError as exc:
+        print(f"Environment configuration is invalid: {exc}", file=sys.stderr)
+        return 2
     logger = configure_logging(level=args.log_level)
     paths = ProjectPaths.from_environment(project_root=PROJECT_ROOT)
     dataset_yaml = paths.resolve_data_path(args.data)
