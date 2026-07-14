@@ -71,7 +71,7 @@ python scripts/prepare_dataset.py --config configs/dataset.yaml
 python scripts/validate_dataset.py --data data/processed/fod_a_single_class_yolo/fod_a.yaml --strict
 ```
 
-The downloader hashes the source archive, writes `source_manifest.json`, rejects unsafe ZIP paths, extracts through a staging directory, and reuses a valid cached archive unless `--force` is supplied. Preparation recursively discovers the Pascal VOC root, preserves the official test split, deterministically divides `trainval` with seed 42, and writes final split lists and hashes. Repeated IDs inside a source split list are detected, reduced to one occurrence, and recorded in manifest warnings; overlap between different splits remains a hard error.
+The downloader hashes the source archive, writes `source_manifest.json`, rejects unsafe ZIP paths, extracts through a staging directory, and reuses a valid cached archive unless `--force` is supplied. Preparation recursively discovers the Pascal VOC root, preserves the official test split, deterministically divides `trainval` with seed 42, and writes final split lists and hashes. Repeated IDs inside a source split list are detected and reduced to one occurrence. When the published source lists overlap, official test membership takes precedence and the affected IDs are removed from `trainval` before shuffling. Every repair is recorded in manifest warnings.
 
 Every valid source object is explicitly stored as class `0` (`FOD`) in YOLO labels. Boxes are clipped and validated, rejected objects and image-dimension mismatches are recorded, and images without valid objects retain empty label files. The processed directory includes:
 

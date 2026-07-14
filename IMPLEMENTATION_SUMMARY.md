@@ -127,7 +127,7 @@ Implement safety-focused model evaluation and threshold analysis
 3. Parser errors identify the affected line without echoing credential values, and loaded values are never logged or returned.
 4. Dataset download/preparation/validation, training, evaluation, and environment diagnostics share the same bootstrap behavior.
 5. `TRAINING_RUNBOOK.md` documents the Ubuntu 24.04 and Python 3.12.3 workflow, device-specific PyTorch installation, local Kaggle credential creation, dataset stages, CUDA validation, 50-epoch training, monitoring, and resume.
-6. Official source split lists are duplicate-aware: repeated IDs are retained once and recorded in `split_warnings`, while cross-split overlap remains fatal.
+6. Official source split lists are duplicate-aware: repeated IDs are retained once, and overlap is resolved by preserving official test membership and removing those IDs from `trainval` before seeded shuffling. Both repairs are recorded in `split_warnings`.
 7. A partial processed directory created by an earlier failed validation is recognized as incomplete and rebuilt atomically without manual deletion or `--force`.
 
 ### Maintainer model
@@ -146,5 +146,5 @@ The loader is dependency-free so credentials and portable path overrides are ava
 ### Suggested descriptive commit message
 
 ```text
-Harden environment loading and real FOD-A dataset preparation
+Resolve published FOD-A split overlap without test leakage
 ```

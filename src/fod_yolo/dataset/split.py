@@ -81,15 +81,22 @@ def resolve_dataset_splits(
     if preserve_official_test and trainval_path.is_file() and test_path.is_file():
         trainval_ids, trainval_duplicates = _read_split_ids_with_duplicates(trainval_path)
         test_ids, test_duplicates = _read_split_ids_with_duplicates(test_path)
-        _assert_disjoint({"trainval": trainval_ids, "test": test_ids})
-        if len(trainval_ids) < 2:
-            raise DatasetSplitError("Official trainval split must contain at least two images")
-
         warnings = []
         if trainval_duplicates:
             warnings.append(_duplicate_warning("trainval", trainval_duplicates))
         if test_duplicates:
             warnings.append(_duplicate_warning("test", test_duplicates))
+
+        test_membership = set(test_ids)
+        source_overlap = tuple(sorted(set(trainval_ids).intersection(test_membership)))
+        if source_overlap:
+            trainval_ids = tuple(
+                identifier for identifier in trainval_ids if identifier not in test_membership
+            )
+            warnings.append(_official_test_overlap_warning(source_overlap))
+        _assert_disjoint({"trainval": trainval_ids, "test": test_ids})
+        if len(trainval_ids) < 2:
+            raise DatasetSplitError("Official trainval split must contain at least two images")
 
         shuffled = sorted(trainval_ids)
         random.Random(seed).shuffle(shuffled)
@@ -205,4 +212,11 @@ def _duplicate_warning(split_name: str, duplicates: tuple[str, ...]) -> str:
     return (
         f"Source {split_name} split contained duplicate IDs; retained one occurrence "
         f"of each: {', '.join(duplicates)}"
+    )
+
+
+def _official_test_overlap_warning(overlap: tuple[str, ...]) -> str:
+    return (
+        "Source trainval and test splits overlapped; preserved official test membership "
+        f"and removed the IDs from trainval: {', '.join(overlap)}"
     )

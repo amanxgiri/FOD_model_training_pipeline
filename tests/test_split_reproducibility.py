@@ -5,9 +5,6 @@ from __future__ import annotations
 import shutil
 from pathlib import Path
 
-import pytest
-
-from fod_yolo.dataset import DatasetSplitError
 from fod_yolo.dataset.split import resolve_dataset_splits
 
 
@@ -58,19 +55,29 @@ def test_duplicate_source_ids_are_deduplicated_and_recorded(
     )
 
 
-def test_cross_split_overlap_remains_fatal(tiny_voc_root: Path, tmp_path: Path) -> None:
+def test_official_test_membership_wins_when_source_lists_overlap(
+    tiny_voc_root: Path,
+    tmp_path: Path,
+) -> None:
     copied_root = tmp_path / "VOC"
     shutil.copytree(tiny_voc_root, copied_root)
     trainval_path = copied_root / "ImageSets" / "Main" / "trainval.txt"
     with trainval_path.open("a", encoding="utf-8") as split_file:
         split_file.write("image005\n")
 
-    with pytest.raises(DatasetSplitError, match="Split overlap"):
-        resolve_dataset_splits(
-            copied_root,
-            trainval_file=Path("ImageSets/Main/trainval.txt"),
-            test_file=Path("ImageSets/Main/test.txt"),
-            validation_fraction=0.25,
-            seed=42,
-            preserve_official_test=True,
-        )
+    splits = resolve_dataset_splits(
+        copied_root,
+        trainval_file=Path("ImageSets/Main/trainval.txt"),
+        test_file=Path("ImageSets/Main/test.txt"),
+        validation_fraction=0.25,
+        seed=42,
+        preserve_official_test=True,
+    )
+
+    assert splits.test == ("image005",)
+    assert "image005" not in splits.train + splits.val
+    assert set(splits.train).isdisjoint(splits.val)
+    assert splits.warnings == (
+        "Source trainval and test splits overlapped; preserved official test membership "
+        "and removed the IDs from trainval: image005",
+    )

@@ -110,11 +110,12 @@ python scripts/validate_dataset.py \
   --strict
 ```
 
-The published FOD-A `trainval.txt` contains a small number of repeated IDs.
-Preparation detects them, retains each image once, and records the affected IDs
-under `split_warnings` in `dataset_manifest.json`. This does not place an image
-in more than one final split. A real overlap between source `trainval` and
-`test` remains a fatal data-integrity error.
+The published FOD-A split files contain a small number of repeated and
+overlapping IDs. Preparation retains each ID once and gives the supplied
+official `test` list precedence, removing those IDs from `trainval` before the
+seeded train/validation division. The affected IDs and both repairs are stored
+under `split_warnings` in `dataset_manifest.json`, so no final split leaks test
+images into training or validation.
 
 If an earlier failed validation created only a partial processed directory,
 rerun the preparation command normally. The pipeline detects incomplete output
