@@ -81,3 +81,24 @@ def test_official_test_membership_wins_when_source_lists_overlap(
         "Source trainval and test splits overlapped; preserved official test membership "
         "and removed the IDs from trainval: image005",
     )
+
+
+def test_mixed_case_image_extension_resolves_on_case_sensitive_filesystems(
+    tiny_voc_root: Path,
+    tmp_path: Path,
+) -> None:
+    copied_root = tmp_path / "VOC"
+    shutil.copytree(tiny_voc_root, copied_root)
+    original = copied_root / "JPEGImages" / "image001.ppm"
+    original.rename(original.with_suffix(".PPM"))
+
+    splits = resolve_dataset_splits(
+        copied_root,
+        trainval_file=Path("ImageSets/Main/trainval.txt"),
+        test_file=Path("ImageSets/Main/test.txt"),
+        validation_fraction=0.25,
+        seed=42,
+        preserve_official_test=True,
+    )
+
+    assert "image001" in splits.train + splits.val

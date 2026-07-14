@@ -121,6 +121,12 @@ If an earlier failed validation created only a partial processed directory,
 rerun the preparation command normally. The pipeline detects incomplete output
 and replaces it atomically; manual deletion and `--force` are not required.
 
+Preparation indexes the `JPEGImages` directory once using case-insensitive IDs
+and extensions, which avoids repeated full-directory scans on Linux when the
+archive uses uppercase image extensions. It logs the resolved split counts and
+conversion progress every 1,000 images. Runtime is primarily determined by CPU
+and storage speed rather than the GPU.
+
 By default, raw and processed data are under `data/`. To place generated files
 on another disk, add paths such as these to `.env` before downloading:
 

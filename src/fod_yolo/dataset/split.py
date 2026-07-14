@@ -4,11 +4,12 @@ from __future__ import annotations
 
 import random
 from collections import Counter
+from collections.abc import Mapping
 from dataclasses import dataclass
 from pathlib import Path, PurePosixPath
 
 from fod_yolo.dataset import DatasetDiscoveryError, DatasetSplitError
-from fod_yolo.dataset.discover import find_source_image
+from fod_yolo.dataset.discover import build_source_image_index, find_source_image
 from fod_yolo.hashing import atomic_write_text, sha256_file
 
 
@@ -69,6 +70,7 @@ def resolve_dataset_splits(
     validation_fraction: float,
     seed: int,
     preserve_official_test: bool,
+    image_index: Mapping[str, tuple[Path, ...]] | None = None,
 ) -> DatasetSplits:
     """Preserve the official test split or create a deterministic 70/15/15 fallback."""
 
@@ -134,14 +136,20 @@ def resolve_dataset_splits(
             warnings=(warning,),
         )
 
-    verify_split_membership(root, splits)
+    verify_split_membership(root, splits, image_index=image_index)
     return splits
 
 
-def verify_split_membership(voc_root: str | Path, splits: DatasetSplits) -> None:
+def verify_split_membership(
+    voc_root: str | Path,
+    splits: DatasetSplits,
+    *,
+    image_index: Mapping[str, tuple[Path, ...]] | None = None,
+) -> None:
     """Require disjoint splits with one annotation and image for every ID."""
 
     root = Path(voc_root).expanduser().resolve()
+    available_images = build_source_image_index(root) if image_index is None else image_index
     memberships = {"train": splits.train, "val": splits.val, "test": splits.test}
     _assert_disjoint(memberships)
     for split_name, identifiers in memberships.items():
@@ -154,7 +162,7 @@ def verify_split_membership(voc_root: str | Path, splits: DatasetSplits) -> None
                     f"Missing annotation for {split_name} image ID {image_id}: {annotation_path}"
                 )
             try:
-                find_source_image(root, image_id)
+                find_source_image(root, image_id, image_index=available_images)
             except DatasetDiscoveryError as exc:
                 raise DatasetSplitError(
                     f"Missing or ambiguous image for {split_name} ID {image_id}: {exc}"

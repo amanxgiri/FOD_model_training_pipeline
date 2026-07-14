@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import logging
 import shutil
 import tempfile
 from collections.abc import Iterable, Mapping
@@ -13,7 +14,7 @@ from uuid import uuid4
 from fod_yolo.config import ConfigMapping, ConfigValue, load_config
 from fod_yolo.dataset import DatasetConversionError
 from fod_yolo.dataset.convert import ConversionOptions, ConvertedImage, convert_voc_dataset
-from fod_yolo.dataset.discover import discover_voc_root
+from fod_yolo.dataset.discover import build_source_image_index, discover_voc_root
 from fod_yolo.dataset.kaggle_client import DownloadResult, download_and_extract_dataset
 from fod_yolo.dataset.split import DatasetSplits, resolve_dataset_splits, write_split_files
 from fod_yolo.dataset.statistics import build_dataset_statistics
@@ -27,6 +28,8 @@ from fod_yolo.hashing import (
     sha256_json,
 )
 from fod_yolo.paths import ProjectPaths
+
+LOGGER = logging.getLogger("fod_yolo")
 
 
 @dataclass(frozen=True, slots=True)
@@ -189,6 +192,8 @@ def prepare_dataset(
             f"Source manifest is missing a valid archive SHA-256: "
             f"{settings.raw_root / 'source_manifest.json'}"
         )
+    image_index = build_source_image_index(voc_root)
+    LOGGER.info("Indexed %d source images; resolving dataset splits", len(image_index))
     splits = resolve_dataset_splits(
         voc_root,
         trainval_file=settings.split.trainval_file,
@@ -196,6 +201,13 @@ def prepare_dataset(
         validation_fraction=settings.split.validation_fraction,
         seed=settings.split.seed,
         preserve_official_test=settings.split.preserve_official_test,
+        image_index=image_index,
+    )
+    LOGGER.info(
+        "Resolved splits: train=%d val=%d test=%d",
+        len(splits.train),
+        len(splits.val),
+        len(splits.test),
     )
 
     final_root.parent.mkdir(parents=True, exist_ok=True)
@@ -207,7 +219,13 @@ def prepare_dataset(
         )
     )
     try:
-        records = convert_voc_dataset(voc_root, staging, splits, settings.conversion)
+        records = convert_voc_dataset(
+            voc_root,
+            staging,
+            splits,
+            settings.conversion,
+            image_index=image_index,
+        )
         effective_splits = _included_splits(splits, records)
         split_files = write_split_files(effective_splits, staging / "splits")
         _write_dataset_yaml(staging / "fod_a.yaml", staging)

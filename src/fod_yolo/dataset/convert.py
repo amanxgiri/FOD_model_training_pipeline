@@ -2,19 +2,23 @@
 
 from __future__ import annotations
 
+import logging
 import math
 import os
 import shutil
+from collections.abc import Mapping
 from dataclasses import dataclass
 from pathlib import Path
 
 from PIL import Image, UnidentifiedImageError
 
 from fod_yolo.dataset import DatasetConversionError
-from fod_yolo.dataset.discover import find_source_image
+from fod_yolo.dataset.discover import build_source_image_index, find_source_image
 from fod_yolo.dataset.split import DatasetSplits
 from fod_yolo.dataset.voc import BoundingBox, VocAnnotation, parse_voc_annotation
 from fod_yolo.hashing import atomic_write_text
+
+LOGGER = logging.getLogger("fod_yolo")
 
 
 @dataclass(frozen=True, slots=True)
@@ -273,11 +277,15 @@ def convert_voc_dataset(
     output_root: str | Path,
     splits: DatasetSplits,
     options: ConversionOptions,
+    *,
+    image_index: Mapping[str, tuple[Path, ...]] | None = None,
 ) -> tuple[ConvertedImage, ...]:
     """Convert every resolved split member without changing split identity."""
 
     root = Path(voc_root).expanduser().resolve()
+    available_images = build_source_image_index(root) if image_index is None else image_index
     records: list[ConvertedImage] = []
+    total_images = len(splits.train) + len(splits.val) + len(splits.test)
     for split_name, identifiers in (
         ("train", splits.train),
         ("val", splits.val),
@@ -289,6 +297,7 @@ def convert_voc_dataset(
                 root,
                 image_id,
                 annotation_filename=annotation.filename,
+                image_index=available_images,
             )
             records.append(
                 convert_annotation(
@@ -299,6 +308,8 @@ def convert_voc_dataset(
                     options=options,
                 )
             )
+            if len(records) % 1000 == 0 or len(records) == total_images:
+                LOGGER.info("Converted %d/%d source images", len(records), total_images)
     return tuple(records)
 
 

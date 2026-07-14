@@ -129,6 +129,7 @@ Implement safety-focused model evaluation and threshold analysis
 5. `TRAINING_RUNBOOK.md` documents the Ubuntu 24.04 and Python 3.12.3 workflow, device-specific PyTorch installation, local Kaggle credential creation, dataset stages, CUDA validation, 50-epoch training, monitoring, and resume.
 6. Official source split lists are duplicate-aware: repeated IDs are retained once, and overlap is resolved by preserving official test membership and removing those IDs from `trainval` before seeded shuffling. Both repairs are recorded in `split_warnings`.
 7. A partial processed directory created by an earlier failed validation is recognized as incomplete and rebuilt atomically without manual deletion or `--force`.
+8. Source images are indexed once by case-insensitive ID and extension, eliminating a quadratic Linux fallback scan caused by uppercase archive extensions. Conversion logs progress every 1,000 images.
 
 ### Maintainer model
 
@@ -140,11 +141,11 @@ The loader is dependency-free so credentials and portable path overrides are ava
 
 - Ruff formatting and lint: pass
 - Mypy strict source check: pass across 32 source files
-- Pytest: 84 tests and 6 subtests pass
+- Pytest: 85 tests and 6 subtests pass
 - Credential parser tests use temporary files and do not access or print the maintainer's real `.env`
 
 ### Suggested descriptive commit message
 
 ```text
-Resolve published FOD-A split overlap without test leakage
+Resolve FOD-A split leakage and Linux preparation slowdown
 ```

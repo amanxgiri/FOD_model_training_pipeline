@@ -2,11 +2,13 @@
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from pathlib import Path
 
 from fod_yolo.dataset import DatasetDiscoveryError
 
 IMAGE_EXTENSIONS = (".jpg", ".jpeg", ".png", ".bmp", ".tif", ".tiff", ".ppm")
+SourceImageIndex = Mapping[str, tuple[Path, ...]]
 
 
 def discover_voc_root(
@@ -59,6 +61,7 @@ def find_source_image(
     image_id: str,
     *,
     annotation_filename: str | None = None,
+    image_index: SourceImageIndex | None = None,
 ) -> Path:
     """Resolve exactly one image for an annotation ID or declared filename."""
 
@@ -68,24 +71,31 @@ def find_source_image(
         if declared.is_file():
             return declared.resolve()
 
-    matches = sorted(
-        path.resolve()
-        for extension in IMAGE_EXTENSIONS
-        for path in image_root.glob(f"{image_id}{extension}")
-        if path.is_file()
+    available = build_source_image_index(voc_root) if image_index is None else image_index
+    lookup_ids = [image_id.casefold()]
+    if annotation_filename:
+        declared_id = Path(annotation_filename).stem.casefold()
+        if declared_id not in lookup_ids:
+            lookup_ids.insert(0, declared_id)
+    matches = tuple(
+        sorted({path for lookup_id in lookup_ids for path in available.get(lookup_id, ())})
     )
-    if not matches:
-        casefolded_id = image_id.casefold()
-        matches = sorted(
-            path.resolve()
-            for path in image_root.iterdir()
-            if path.is_file()
-            and path.suffix.casefold() in IMAGE_EXTENSIONS
-            and path.stem.casefold() == casefolded_id
-        )
     if len(matches) != 1:
         detail = "none" if not matches else ", ".join(str(path) for path in matches)
         raise DatasetDiscoveryError(
             f"Expected exactly one source image for ID {image_id!r}; found {detail}"
         )
     return matches[0]
+
+
+def build_source_image_index(voc_root: str | Path) -> dict[str, tuple[Path, ...]]:
+    """Index supported source images once using case-insensitive IDs and extensions."""
+
+    image_root = Path(voc_root).expanduser().resolve() / "JPEGImages"
+    if not image_root.is_dir():
+        raise DatasetDiscoveryError(f"Source image directory does not exist: {image_root}")
+    mutable: dict[str, list[Path]] = {}
+    for path in image_root.iterdir():
+        if path.is_file() and path.suffix.casefold() in IMAGE_EXTENSIONS:
+            mutable.setdefault(path.stem.casefold(), []).append(path.resolve())
+    return {image_id: tuple(sorted(paths)) for image_id, paths in sorted(mutable.items())}
