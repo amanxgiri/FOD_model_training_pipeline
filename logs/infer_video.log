@@ -1,0 +1,22 @@
+2026-07-14T08:12:24.792Z INFO fod_yolo: Opened fod_16sep06.mp4: 1020x1020 at 25.000 FPS, frames=964
+2026-07-14T08:12:27.364Z INFO fod_yolo: Video inference progress: frames=100 detections=0
+2026-07-14T08:12:28.444Z INFO fod_yolo: Video inference progress: frames=200 detections=20
+2026-07-14T08:12:29.510Z INFO fod_yolo: Video inference progress: frames=300 detections=110
+2026-07-14T08:12:30.584Z INFO fod_yolo: Video inference progress: frames=400 detections=138
+2026-07-14T08:12:31.650Z INFO fod_yolo: Video inference progress: frames=500 detections=240
+2026-07-14T08:12:32.705Z INFO fod_yolo: Video inference progress: frames=600 detections=294
+2026-07-14T08:12:33.723Z INFO fod_yolo: Video inference progress: frames=700 detections=327
+2026-07-14T08:12:34.744Z INFO fod_yolo: Video inference progress: frames=800 detections=389
+2026-07-14T08:12:35.768Z INFO fod_yolo: Video inference progress: frames=900 detections=420
+2026-07-14T08:12:36.433Z INFO fod_yolo: Inference artifacts written to /home/sanket/Documents/FOD_model_training_pipeline/runs/inference/video/fod_16sep06_20260714T081224Z_66b907e7
+2026-07-14T08:22:15.264Z INFO fod_yolo: Opened fod_16sep06.mp4: 1020x1020 at 25.000 FPS, frames=964
+2026-07-14T08:22:17.825Z INFO fod_yolo: Video inference progress: frames=100 detections=0
+2026-07-14T08:22:18.912Z INFO fod_yolo: Video inference progress: frames=200 detections=27
+2026-07-14T08:22:19.977Z INFO fod_yolo: Video inference progress: frames=300 detections=144
+2026-07-14T08:22:21.062Z INFO fod_yolo: Video inference progress: frames=400 detections=194
+2026-07-14T08:22:22.147Z INFO fod_yolo: Video inference progress: frames=500 detections=319
+2026-07-14T08:22:23.203Z INFO fod_yolo: Video inference progress: frames=600 detections=387
+2026-07-14T08:22:24.224Z INFO fod_yolo: Video inference progress: frames=700 detections=430
+2026-07-14T08:22:25.260Z INFO fod_yolo: Video inference progress: frames=800 detections=508
+2026-07-14T08:22:26.295Z INFO fod_yolo: Video inference progress: frames=900 detections=551
+2026-07-14T08:22:26.960Z INFO fod_yolo: Inference artifacts written to /home/sanket/Documents/FOD_model_training_pipeline/runs/inference/video/fod_16sep06_20260714T082215Z_66b907e7
