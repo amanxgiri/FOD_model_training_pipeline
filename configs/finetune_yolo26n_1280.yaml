@@ -1,0 +1,40 @@
+model: required-best.pt
+data: data/processed/fod_a_arun_synthetic_combined/fod_combined.yaml
+
+training:
+  epochs: 70
+  imgsz: 1280
+  batch: -1
+  device: 0
+  workers: 8
+  pretrained: true
+  optimizer: auto
+  patience: 30
+  seed: 42
+  deterministic: true
+  amp: true
+  cache: false
+  rect: false
+  multi_scale: 0.0
+  close_mosaic: 10
+  save: true
+  save_period: 10
+  val: true
+  plots: true
+  project: runs/train
+  name: yolo26n_fod_real_synthetic_finetune_1280
+  exist_ok: false
+
+metadata:
+  training_mode: finetune
+  experiment_description: Fine-tune the current FOD best checkpoint on preserved runway and synthetic splits
+  parent_checkpoint_required: true
+  dataset_mix:
+    - runway-fod-a
+    - arun-synthetic
+  tags:
+    - phase1
+    - fine-tune
+    - real-plus-synthetic
+    - single-class
+    - imgsz1280

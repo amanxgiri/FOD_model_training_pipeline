@@ -31,3 +31,7 @@ class DatasetConversionError(DatasetError):
 
 class DatasetValidationError(DatasetError):
     """Raised when strict processed-dataset validation fails."""
+
+
+class DatasetCombinationError(DatasetError):
+    """Raised when fine-tuning sources cannot form one leakage-safe dataset."""

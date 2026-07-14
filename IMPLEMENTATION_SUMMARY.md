@@ -182,3 +182,37 @@ The summary cannot claim detection accuracy because the uploaded video is unlabe
 ```text
 Implement streaming annotated video inference and statistics
 ```
+
+## Major Part 7: Real-plus-synthetic checkpoint fine-tuning
+
+### What this part implements
+
+1. `scripts/prepare_finetune_dataset.py` loads `configs/finetune_dataset.yaml`, validates the existing processed FOD-A dataset and ignored `data/arun_synthetic_dataset/Data` YOLO layout, and builds one combined dataset.
+2. Source split membership is authoritative: runway and synthetic train/validation/test images remain in the same role. IDs receive `runway__` and `synthetic__` prefixes to prevent filename collisions and test leakage.
+3. Synthetic labels must contain only explicit class `0` boxes with valid normalized coordinates. All image/label pairs are required, and a content fingerprint binds the 50,000-file synthetic source to the combined manifest.
+4. Hardlinks provide a conventional combined YOLO directory without duplicating image bytes on Hydra. Copy mode is an explicit cross-filesystem fallback.
+5. `configs/finetune_yolo26n_1280.yaml` fixes the requested 70 epochs, 1280 input, deterministic seed 42, existing augmentation behavior, and a recognizable fine-tuning run prefix.
+6. `scripts/train.py --init-checkpoint <best.pt>` starts a new experiment from learned weights rather than resuming old optimizer state. Baseline training still accepts only `yolo26n.pt`; fine-tuning requires a real, non-empty `best.pt`.
+7. Run and candidate metadata record the parent checkpoint SHA-256 and combined dataset fingerprint. Candidate output includes both `best.pt` and `<run-id>_best.pt` so the selected weight file is uniquely identifiable.
+
+### Maintainer model
+
+Dataset combination and model initialization are separate transactions. The dataset builder first validates and fingerprints both sources, constructs through staging, performs strict validation, and only then atomically installs the combined root. Re-running without `--force` reuses a valid completed dataset.
+
+Fine-tuning is not checkpoint resume. `--init-checkpoint` loads the current model parameters into a new run whose optimizer, scheduler, run ID, resolved configuration, dataset fingerprint, and checkpoint selection are independent of the original baseline. `--resume` remains reserved for continuing an interrupted run with its original state.
+
+Randomization applies only to training iteration. Ultralytics uses the deterministic seed to shuffle the combined training samples across epochs, while source-provided validation and test splits remain immutable. This reduces ordering bias without contaminating evaluation; augmentation and held-out evaluation—not arbitrary reshuffling of all files—are the controls against memorization.
+
+### Validation completed
+
+- Ruff formatting and lint: pass
+- Mypy strict source check: pass across 36 source files
+- Pytest: 93 tests and 6 subtests pass
+- Fixture-backed tests cover split preservation, prefixed IDs, hardlink storage, manifest fingerprints, cached reuse, mandatory `best.pt` initialization, 70 epochs, parent provenance, and uniquely named best-candidate weights
+- No remote dataset or GPU is required for automated tests
+
+### Suggested descriptive commit message
+
+```text
+Add reproducible real-synthetic checkpoint fine-tuning workflow
+```

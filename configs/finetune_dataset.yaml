@@ -1,0 +1,15 @@
+sources:
+  runway_dataset_yaml: data/processed/fod_a_single_class_yolo/fod_a.yaml
+  synthetic_root: data/arun_synthetic_dataset/Data
+
+output:
+  processed_root: data/processed/fod_a_arun_synthetic_combined
+  dataset_yaml_name: fod_combined.yaml
+  image_transfer_mode: hardlink
+
+split:
+  seed: 42
+  preserve_source_splits: true
+  source_prefixes:
+    runway: runway
+    synthetic: synthetic

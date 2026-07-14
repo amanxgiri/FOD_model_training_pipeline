@@ -30,7 +30,7 @@ from fod_yolo.hashing import (
 )
 from fod_yolo.paths import ProjectPaths
 from fod_yolo.training import TrainingError, TrainingExecutionError
-from fod_yolo.training.config import TrainingSettings, validate_training_settings
+from fod_yolo.training.config import TrainingSettings, training_mode, validate_training_settings
 from fod_yolo.training.resume import ResumeContext, append_resume_record
 from fod_yolo.training.run_metadata import (
     failure_details,
@@ -134,6 +134,13 @@ def run_training(
             started_at=started_at,
             allow_cpu=allow_cpu,
         )
+        if training_mode(settings) == "finetune":
+            parent = Path(settings.model).expanduser().resolve()
+            metadata["parent_checkpoint"] = {
+                "path": str(parent),
+                "sha256": sha256_file(parent),
+                "size_bytes": parent.stat().st_size,
+            }
         resolved_config = settings.resolved_config(
             run_id=run_id,
             device_override="cpu" if allow_cpu else None,
@@ -230,6 +237,7 @@ def run_training(
             dataset_manifest=settings.data.parent / "dataset_manifest.json",
             dataset_fingerprint=dataset_fingerprint,
             checkpoints=checkpoint_metadata,
+            parent_checkpoint=metadata.get("parent_checkpoint"),
         )
         metadata["candidate_directory"] = str(candidate_directory)
         metadata["checkpoints"] = checkpoint_metadata
@@ -294,6 +302,7 @@ def _install_candidate(
     dataset_manifest: Path,
     dataset_fingerprint: str,
     checkpoints: dict[str, dict[str, object]],
+    parent_checkpoint: object = None,
 ) -> Path:
     candidates_root = project_paths.artifacts_root / "candidates"
     candidates_root.mkdir(parents=True, exist_ok=True)
@@ -304,12 +313,16 @@ def _install_candidate(
     try:
         shutil.copy2(run_directory / "weights" / "best.pt", staging / "best.pt")
         shutil.copy2(run_directory / "weights" / "last.pt", staging / "last.pt")
+        unique_best_filename = f"{run_id}_best.pt"
+        shutil.copy2(run_directory / "weights" / "best.pt", staging / unique_best_filename)
         for name in ("best", "last"):
             copied_hash = sha256_file(staging / f"{name}.pt")
             if copied_hash != checkpoints[name]["sha256"]:
                 raise TrainingExecutionError(
                     f"Candidate {name}.pt hash changed while copying into staging"
                 )
+        if sha256_file(staging / unique_best_filename) != checkpoints["best"]["sha256"]:
+            raise TrainingExecutionError("Uniquely named best checkpoint failed hash verification")
         shutil.copy2(run_directory / "resolved_config.yaml", staging / "training_config.yaml")
         shutil.copy2(dataset_manifest, staging / "dataset_manifest.json")
         atomic_write_json(
@@ -324,6 +337,12 @@ def _install_candidate(
                     for name, value in checkpoints.items()
                 },
                 "dataset_fingerprint": dataset_fingerprint,
+                "parent_checkpoint": parent_checkpoint,
+                "unique_best_checkpoint": {
+                    "filename": unique_best_filename,
+                    "sha256": checkpoints["best"]["sha256"],
+                    "size_bytes": checkpoints["best"]["size_bytes"],
+                },
                 "run_id": run_id,
                 "schema_version": "1.0",
                 "status": "training_complete",

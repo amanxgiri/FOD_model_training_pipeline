@@ -38,6 +38,10 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--config", default="configs/train_yolo26n_1280.yaml")
     parser.add_argument("--set", dest="overrides", action="append", default=[])
     parser.add_argument("--allow-cpu", action="store_true")
+    parser.add_argument(
+        "--init-checkpoint",
+        help="Start a new fine-tuning run from an existing best.pt checkpoint.",
+    )
     parser.add_argument("--resume", help="Existing runs/train/<run>/weights/last.pt checkpoint.")
     parser.add_argument("--allow-dataset-change", action="store_true")
     parser.add_argument("--log-level", default="INFO")
@@ -58,6 +62,10 @@ def main(argv: Sequence[str] | None = None) -> int:
     resume_context = None
     try:
         if args.resume:
+            if args.init_checkpoint:
+                raise TrainingConfigurationError(
+                    "--init-checkpoint cannot be combined with --resume"
+                )
             if args.overrides:
                 raise TrainingConfigurationError(
                     "--set overrides are not accepted with --resume; the original resolved "
@@ -76,7 +84,12 @@ def main(argv: Sequence[str] | None = None) -> int:
                 raise TrainingConfigurationError(
                     "--allow-dataset-change is valid only together with --resume"
                 )
-            settings = load_training_settings(args.config, paths, overrides=args.overrides)
+            settings = load_training_settings(
+                args.config,
+                paths,
+                overrides=args.overrides,
+                model_override=args.init_checkpoint,
+            )
     except (ConfigError, TrainingConfigurationError) as exc:
         logger.error("Training configuration is invalid: %s", exc)
         return 2

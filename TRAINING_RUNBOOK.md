@@ -178,7 +178,74 @@ python scripts/train.py --resume runs/train/<run-id>/weights/last.pt
 The resume operation retains the original run configuration, including the
 50-epoch target recorded for that run.
 
-## 9. Run inference on an uploaded sample video
+## 9. Fine-tune on the combined runway and synthetic datasets
+
+Confirm that both source datasets exist:
+
+```bash
+test -f data/processed/fod_a_single_class_yolo/fod_a.yaml
+test -d data/arun_synthetic_dataset/Data/images/train
+test -d data/arun_synthetic_dataset/Data/labels/train
+```
+
+Build the combined fingerprinted dataset. This preserves each source's existing
+`train`, `val`, and `test` membership and uses hardlinks to avoid storing a
+second copy of the image bytes:
+
+```bash
+python scripts/prepare_finetune_dataset.py \
+  --config configs/finetune_dataset.yaml
+```
+
+The first run reads and hashes all synthetic files, so it can take several
+minutes for 50,000 images. Progress is logged every 5,000 images. If hardlinking
+reports that the source and output are on different filesystems, rerun with:
+
+```bash
+python scripts/prepare_finetune_dataset.py \
+  --config configs/finetune_dataset.yaml \
+  --set output.image_transfer_mode=copy \
+  --force
+```
+
+Validate the final combined dataset explicitly:
+
+```bash
+python scripts/validate_dataset.py \
+  --data data/processed/fod_a_arun_synthetic_combined/fod_combined.yaml \
+  --strict
+```
+
+Start a new 70-epoch run from the original training run's `best.pt`:
+
+```bash
+python scripts/train.py \
+  --config configs/finetune_yolo26n_1280.yaml \
+  --init-checkpoint runs/train/<baseline-run-id>/weights/best.pt
+```
+
+Do not use `--resume` to begin fine-tuning. A new run inherits model weights but
+starts a fresh optimizer and scheduler. The combined training split is shuffled
+by Ultralytics using the committed deterministic seed 42; source validation and
+test splits are never moved into training.
+
+The output run ID begins with:
+
+```text
+yolo26n_fod_real_synthetic_finetune_1280_
+```
+
+The best checkpoint is available at both:
+
+```text
+runs/train/<fine-tune-run-id>/weights/best.pt
+artifacts/candidates/<fine-tune-run-id>/<fine-tune-run-id>_best.pt
+```
+
+`run_metadata.json` and `candidate_manifest.json` record the original parent
+checkpoint checksum, combined dataset fingerprint, and final checkpoint hashes.
+
+## 10. Run inference on an uploaded sample video
 
 Create the ignored input directory and copy or upload the video into it:
 
@@ -190,7 +257,7 @@ Then run inference using the completed training run's `best.pt` checkpoint:
 
 ```bash
 python scripts/infer_video.py \
-  --model runs/train/<run-id>/weights/best.pt \
+  --model runs/train/<fine-tune-run-id>/weights/best.pt \
   --source data/test_videos/sample.mp4 \
   --imgsz 1280 \
   --conf 0.25 \
@@ -210,7 +277,7 @@ For a quick section of a long video:
 
 ```bash
 python scripts/infer_video.py \
-  --model runs/train/<run-id>/weights/best.pt \
+  --model runs/train/<fine-tune-run-id>/weights/best.pt \
   --source data/test_videos/sample.mp4 \
   --start-time 30 \
   --end-time 90 \

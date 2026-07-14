@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+from dataclasses import replace
 from datetime import UTC, datetime
 from pathlib import Path
 
@@ -86,6 +87,9 @@ def test_successful_training_writes_reproducible_run_and_candidate_artifacts(
     assert candidate_manifest["checkpoints"]["best"]["sha256"] == sha256_file(
         result.best_checkpoint
     )
+    unique_best = candidate_manifest["unique_best_checkpoint"]
+    assert unique_best["filename"] == f"{result.run_id}_best.pt"
+    assert result.candidate_directory.joinpath(unique_best["filename"]).is_file()
     assert result.run_directory.joinpath("resolved_config.yaml").is_file()
     resolved_config = yaml.safe_load(
         result.run_directory.joinpath("resolved_config.yaml").read_text(encoding="utf-8")
@@ -151,6 +155,42 @@ def test_cuda_preflight_failure_is_recorded_before_model_loading(
     metadata = json.loads(next(settings.project.glob("*/run_metadata.json")).read_text())
     assert metadata["status"] == "failed"
     assert metadata["error"]["phase"] == "environment_preflight"
+
+
+def test_finetune_run_records_parent_best_checkpoint(
+    tmp_path: Path,
+    prepared_tiny_dataset: PreparationResult,
+) -> None:
+    baseline_settings, paths = _settings_and_paths(tmp_path, prepared_tiny_dataset)
+    parent = tmp_path / "parent" / "weights" / "best.pt"
+    parent.parent.mkdir(parents=True)
+    parent.write_bytes(b"parent-best-checkpoint")
+    settings = replace(
+        baseline_settings,
+        model=str(parent),
+        name_prefix="yolo26n_fod_real_synthetic_finetune_1280",
+        metadata={"training_mode": "finetune"},
+    )
+    fake_model = FakeYolo(settings.model)
+
+    result = run_training(
+        settings,
+        paths,
+        allow_cpu=True,
+        yolo_factory=lambda checkpoint: fake_model,
+        environment_report=_environment_report(cuda_available=False),
+        dependency_freeze=(),
+        now=lambda: FIXED_TIME,
+    )
+
+    metadata = json.loads(result.metadata_path.read_text(encoding="utf-8"))
+    assert fake_model.checkpoint == str(parent)
+    assert metadata["parent_checkpoint"]["path"] == str(parent.resolve())
+    assert metadata["parent_checkpoint"]["sha256"] == sha256_file(parent)
+    candidate = json.loads(
+        (result.candidate_directory / "candidate_manifest.json").read_text(encoding="utf-8")
+    )
+    assert candidate["parent_checkpoint"] == metadata["parent_checkpoint"]
 
 
 def test_failed_run_resumes_in_place_with_original_identity(

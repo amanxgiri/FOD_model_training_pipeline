@@ -8,7 +8,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from fod_yolo.config import ConfigMapping, ConfigValue, load_config
-from fod_yolo.paths import ProjectPaths
+from fod_yolo.paths import ProjectPaths, resolve_path
 from fod_yolo.training import TrainingConfigurationError
 
 _SAFE_RUN_NAME = re.compile(r"[A-Za-z0-9][A-Za-z0-9._-]*")
@@ -107,12 +107,18 @@ def load_training_settings(
     project_paths: ProjectPaths,
     *,
     overrides: Iterable[str] = (),
+    model_override: str | Path | None = None,
 ) -> TrainingSettings:
     """Load, validate, and relocate the Phase 1 training configuration."""
 
     loaded = load_config(config_path, overrides=overrides)
     config = loaded.values
-    model = _string(config, "model")
+    configured_model = _string(config, "model")
+    model = (
+        configured_model
+        if model_override is None
+        else str(_resolve_model_checkpoint(model_override, project_paths))
+    )
     data = project_paths.resolve_data_path(_string(config, "data"))
     training = _mapping(config, "training")
     metadata = _mapping(config, "metadata")
@@ -151,8 +157,24 @@ def load_training_settings(
 def validate_training_settings(settings: TrainingSettings) -> None:
     """Enforce the fixed Phase 1 baseline while retaining explicit configurability."""
 
-    if Path(settings.model).name != "yolo26n.pt":
-        raise TrainingConfigurationError("Phase 1 training requires the yolo26n.pt checkpoint")
+    mode = training_mode(settings)
+    if mode == "baseline":
+        if Path(settings.model).name != "yolo26n.pt":
+            raise TrainingConfigurationError(
+                "Phase 1 baseline training requires the yolo26n.pt checkpoint"
+            )
+    elif mode == "finetune":
+        checkpoint = Path(settings.model).expanduser().resolve()
+        if checkpoint.name != "best.pt":
+            raise TrainingConfigurationError(
+                "Fine-tuning requires --init-checkpoint pointing to a best.pt checkpoint"
+            )
+        if not checkpoint.is_file() or checkpoint.stat().st_size == 0:
+            raise TrainingConfigurationError(
+                f"Fine-tuning checkpoint is missing or empty: {checkpoint}"
+            )
+    else:
+        raise TrainingConfigurationError(f"Unsupported metadata.training_mode: {mode!r}")
     arguments = settings.training_arguments
     _positive_integer(arguments, "epochs")
     if _integer(arguments, "imgsz") != 1280:
@@ -191,6 +213,26 @@ def validate_training_settings(settings: TrainingSettings) -> None:
     device = arguments.get("device")
     if isinstance(device, bool) or not isinstance(device, (str, int, list)):
         raise TrainingConfigurationError("training.device must be an integer, string, or list")
+
+
+def training_mode(settings: TrainingSettings) -> str:
+    """Return the explicit training mode, defaulting legacy configs to baseline."""
+
+    value = settings.metadata.get("training_mode", "baseline")
+    if not isinstance(value, str) or not value.strip():
+        raise TrainingConfigurationError("metadata.training_mode must be a non-empty string")
+    return value.strip().lower()
+
+
+def _resolve_model_checkpoint(value: str | Path, paths: ProjectPaths) -> Path:
+    candidate = Path(value).expanduser()
+    if candidate.is_absolute():
+        return candidate.resolve()
+    if candidate.parts and candidate.parts[0].casefold() == "runs":
+        return paths.resolve_runs_path(candidate)
+    if candidate.parts and candidate.parts[0].casefold() == "artifacts":
+        return paths.resolve_artifacts_path(candidate)
+    return resolve_path(candidate, relative_to=paths.project_root)
 
 
 def _mapping(mapping: Mapping[str, ConfigValue], key: str) -> dict[str, ConfigValue]:

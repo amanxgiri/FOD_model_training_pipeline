@@ -6,7 +6,7 @@ The implementation contract is defined in [`FOD_YOLO26n_Phase1_Technical_Specifi
 
 ## Current status
 
-The repository now includes packaging, configuration, portable paths, hashing, atomic artifact writes, logging, environment diagnostics, the complete dataset pipeline, GPU-gated YOLO26n training/resume orchestration, and quantitative evaluation. Model promotion, publication, reporting, and inference are not implemented yet.
+The repository now includes packaging, configuration, portable paths, hashing, atomic artifact writes, logging, environment diagnostics, dataset preparation, baseline/fine-tuning orchestration, quantitative evaluation, and streaming video inference. Model promotion, publication, and HTML reporting are not implemented yet.
 
 No model-accuracy claims are made until a real training and evaluation run produces metrics.
 
@@ -143,6 +143,29 @@ python scripts/train.py --config configs/train_yolo26n_1280.yaml
 ```
 
 The real duration before training can start is therefore dataset download/preparation and machine dependency setup, not another implementation milestone.
+
+## Real-plus-synthetic fine-tuning
+
+The ignored `data/arun_synthetic_dataset/Data` source is combined with the validated FOD-A dataset without moving images between their supplied train, validation, and test splits:
+
+```bash
+python scripts/prepare_finetune_dataset.py \
+  --config configs/finetune_dataset.yaml
+```
+
+The builder validates image/label pairing and explicit class `0`, fingerprints the synthetic content, prefixes IDs with `runway__` or `synthetic__`, and hardlinks files into `data/processed/fod_a_arun_synthetic_combined/`. Hardlinks avoid duplicating image bytes while giving Ultralytics one conventional YOLO directory. If the two sources are on different filesystems, use `--set output.image_transfer_mode=copy`.
+
+Start a new 70-epoch fine-tuning run from the current validation-best checkpoint:
+
+```bash
+python scripts/train.py \
+  --config configs/finetune_yolo26n_1280.yaml \
+  --init-checkpoint runs/train/<baseline-run-id>/weights/best.pt
+```
+
+This is intentionally a new run rather than `--resume`: model weights are inherited, while the optimizer and scheduler start a new experiment on the combined dataset. The training sampler shuffles the combined training split deterministically with seed 42; validation and test membership remain fixed. Run metadata records the parent checkpoint path/hash and combined dataset fingerprint.
+
+The fine-tuning run is named `yolo26n_fod_real_synthetic_finetune_1280_<timestamp>_<git>`. In addition to the native `weights/best.pt`, candidate artifacts contain `<fine-tune-run-id>_best.pt` for an unambiguous portable filename.
 
 ## Evaluation pipeline
 
