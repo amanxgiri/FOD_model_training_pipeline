@@ -149,3 +149,36 @@ The loader is dependency-free so credentials and portable path overrides are ava
 ```text
 Resolve FOD-A split leakage and Linux preparation slowdown
 ```
+
+## Major Part 6: Streaming annotated video inference
+
+### What this part implements
+
+1. `fod_yolo.inference.detector.FODDetector` lazily loads an Ultralytics checkpoint and normalizes each frame result into stable original-frame pixel coordinates, class labels, confidence, and stage timings.
+2. `fod_yolo.inference.video.run_video_inference` validates source metadata, iterates without retaining the full video, applies optional time bounds and frame stride, draws boxes/labels, and writes an annotated MP4.
+3. Every prediction is written to the specification-defined `detections.csv`; `frame_metrics.csv` records detection counts and per-frame preprocessing, inference, postprocessing, and end-to-end time.
+4. `video_summary.json` reports source/model identity, frame/detection counts, confidence statistics, mean/P95 inference latency, processing FPS, real-time ratio, and completion status.
+5. Interruptions retain flushed CSV data and a partial summary marked `incomplete`. Unlabelled videos are explicitly marked `inference-only`, with accuracy metrics unavailable.
+6. `scripts/infer_video.py` exposes model/video paths, image size, confidence, device, stride, time bounds, output controls, detection-frame export, and config overrides while printing final statistics to the terminal.
+
+### Maintainer model
+
+The CLI owns user-facing path resolution and exit codes. Typed configuration defines the reproducible contract, `FODDetector` isolates Ultralytics-specific result shapes, and the video runner owns OpenCV streaming and stable artifacts. This separation lets the runner be tested with fake frames and predictions without loading a model or video codec.
+
+The annotated output contains only processed frames and uses `source_fps / frame_stride`, preserving playback timing when frames are intentionally skipped. Bounding-box coordinates in CSV always refer to the original source frame dimensions; model resizing remains internal to Ultralytics.
+
+The summary cannot claim detection accuracy because the uploaded video is unlabelled. Precision, recall, mAP, and false-negative rate require ground-truth video annotations and remain outside this inference-only workflow.
+
+### Validation completed
+
+- Ruff formatting and lint: pass
+- Mypy strict source check: pass across 35 source files
+- Pytest: 88 tests and 6 subtests pass
+- Video output, frame stride, detection schema, confidence/latency statistics, annotation drawing, model-result normalization, and interrupted-run recovery have fixture-backed coverage
+- No real checkpoint or video was required for automated tests
+
+### Suggested descriptive commit message
+
+```text
+Implement streaming annotated video inference and statistics
+```

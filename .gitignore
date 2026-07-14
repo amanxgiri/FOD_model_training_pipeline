@@ -21,6 +21,7 @@ htmlcov/
 data/raw/
 data/processed/
 data/cache/
+data/test_videos/
 *.zip
 
 # Training, evaluation, and generated reports

@@ -161,3 +161,29 @@ python scripts/evaluate.py --model artifacts/champion/fod_yolo26n_best.pt --data
 ```
 
 Prediction matching is confidence ordered, one-to-one, and uses the configured IoU threshold. Reports include model/dataset hashes, split identity, runtime precision/device/batch settings, warm-up count, preprocessing/inference/postprocessing latency, throughput, and peak GPU memory when PyTorch exposes it.
+
+## Video inference
+
+Place an unlabelled test video under the ignored `data/test_videos/` directory and run the completed training run's validation-selected `best.pt` checkpoint:
+
+```bash
+python scripts/infer_video.py \
+  --model runs/train/<run-id>/weights/best.pt \
+  --source data/test_videos/sample.mp4 \
+  --imgsz 1280 \
+  --conf 0.25 \
+  --device 0 \
+  --frame-stride 1 \
+  --save-video \
+  --save-csv
+```
+
+Replace `0.25` with the operating threshold selected from validation when available. The command streams frames without loading the video into memory and prints the completed JSON statistics to the terminal. It creates `runs/inference/video/<run-id>/` containing:
+
+- `annotated_video.mp4` with FOD boxes and confidence labels
+- `detections.csv` with original-frame coordinates and per-stage timings
+- `frame_metrics.csv` with detection counts and end-to-end latency per processed frame
+- `video_summary.json` with source metadata, counts, confidence statistics, mean/P95 inference latency, processing FPS, and real-time ratio
+- `inference_config.yaml`, `source_metadata.json`, and optional `detection_frames/`
+
+Use `--start-time`, `--end-time`, or `--frame-stride` for a bounded test. An interrupted run retains CSV data and a summary marked `incomplete`. Because an uploaded video has no ground-truth annotations, its statistics are explicitly labelled `inference-only`; they do not represent precision, recall, mAP, or false-negative rate.

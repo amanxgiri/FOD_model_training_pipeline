@@ -177,3 +177,45 @@ python scripts/train.py --resume runs/train/<run-id>/weights/last.pt
 
 The resume operation retains the original run configuration, including the
 50-epoch target recorded for that run.
+
+## 9. Run inference on an uploaded sample video
+
+Create the ignored input directory and copy or upload the video into it:
+
+```bash
+mkdir -p data/test_videos
+```
+
+Then run inference using the completed training run's `best.pt` checkpoint:
+
+```bash
+python scripts/infer_video.py \
+  --model runs/train/<run-id>/weights/best.pt \
+  --source data/test_videos/sample.mp4 \
+  --imgsz 1280 \
+  --conf 0.25 \
+  --device 0 \
+  --frame-stride 1 \
+  --save-video \
+  --save-csv
+```
+
+Use the confidence threshold selected from validation in place of `0.25` when
+available. The terminal prints the video statistics as JSON. The annotated MP4
+and machine-readable CSV/JSON artifacts are written to a unique directory under
+`runs/inference/video/`. The output path is also printed when the command
+finishes.
+
+For a quick section of a long video:
+
+```bash
+python scripts/infer_video.py \
+  --model runs/train/<run-id>/weights/best.pt \
+  --source data/test_videos/sample.mp4 \
+  --start-time 30 \
+  --end-time 90 \
+  --device 0
+```
+
+Enable `--save-detection-frames` to additionally save JPEG files only for
+frames that contain at least one detection.
